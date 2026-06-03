@@ -1,0 +1,65 @@
+# ============================================
+# SECRETS — NEVER COMMIT THESE
+# ============================================
+backend/.env
+frontend/.env.local
+*.env
+.env.*
+
+# ============================================
+# PYTHON
+# ============================================
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/**/*.pyc
+backend/**/*.pyo
+backend/*.egg-info/
+backend/dist/
+backend/build/
+backend/.pytest_cache/
+backend/.coverage
+backend/htmlcov/
+
+# ============================================
+# NODE / NEXT.JS
+# ============================================
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.vercel/
+
+# ============================================
+# DATABASE
+# ============================================
+*.sqlite
+*.sqlite3
+backend/alembic/versions/*.pyc
+
+# ============================================
+# DOCKER
+# ============================================
+*.log
+docker/data/
+
+# ============================================
+# VS CODE
+# ============================================
+.vscode/settings.json
+.vscode/launch.json
+
+# ============================================
+# WINDOWS SYSTEM FILES
+# ============================================
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ============================================
+# HUGGINGFACE
+# ============================================
+huggingface/__pycache__/
+*.safetensors
+*.ckpt
+*.pt
+*.bin
