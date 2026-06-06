@@ -1,10 +1,11 @@
-# intake.py
+# models/intake.py
 # Validates the intake form data sent from the frontend.
-# returns an error before it even reaches our code.
+# Updated for Pydantic V2 syntax.
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import List, Optional
 from enum import Enum
+
 
 class RoomType(str, Enum):
     LIVING_ROOM = "Living Room"
@@ -12,6 +13,7 @@ class RoomType(str, Enum):
     HOME_OFFICE = "Home Office"
     DINING_ROOM = "Dining Room"
     STUDIO_APARTMENT = "Studio Apartment"
+
 
 class StylePreference(str, Enum):
     MINIMALIST = "Minimalist"
@@ -23,16 +25,19 @@ class StylePreference(str, Enum):
     MID_CENTURY_MODERN = "Mid-Century Modern"
     JAPANDI = "Japandi"
 
+
 class ColorMood(str, Enum):
     WARM_COZY = "Warm and Cozy"
     COOL_CALM = "Cool and Calm"
     BOLD_VIBRANT = "Bold and Vibrant"
     NEUTRAL_CLEAN = "Neutral and Clean"
 
+
 class LightLevel(str, Enum):
     BRIGHT = "Bright"
     MODERATE = "Moderate"
     LOW = "Low"
+
 
 class BudgetRange(str, Enum):
     UNDER_50K = "Under 50000"
@@ -40,24 +45,26 @@ class BudgetRange(str, Enum):
     RANGE_150K_400K = "150000 to 400000"
     ABOVE_400K = "Above 400000"
 
+
 class DimensionUnit(str, Enum):
     FEET = "feet"
     METERS = "meters"
 
+
 class IntakePayload(BaseModel):
-    
+
     # Room basics
     room_type: RoomType
     length: float = Field(gt=0, description="Room length")
     width: float = Field(gt=0, description="Room width")
     ceiling_height: float = Field(gt=0, description="Ceiling height")
     unit: DimensionUnit = DimensionUnit.FEET
-    
+
     # Style preferences
     style_preference: StylePreference
     color_mood: ColorMood
     light_level: LightLevel
-    
+
     # Constraints
     budget_range: BudgetRange
     must_have_items: List[str] = Field(
@@ -72,34 +79,39 @@ class IntakePayload(BaseModel):
         default=None,
         description="Special notes like door positions"
     )
-    
-    # Dimension validation
-    @validator("length", "width")
-    def validate_room_size(cls, v, field):
+
+    # Pydantic V2 validators
+
+    @field_validator("length", "width")
+    @classmethod
+    def validate_room_dimensions(cls, v: float) -> float:
         if v < 6:
             raise ValueError(
-                f"{field.name} seems too small. "
-                f"Minimum room dimension is 6 feet / 2 meters."
+                "Room dimension seems too small. "
+                "Minimum is 6 feet / 2 meters."
             )
         if v > 100:
             raise ValueError(
-                f"{field.name} seems too large. "
-                f"Please check your dimensions."
+                "Room dimension seems too large. "
+                "Please check your measurements."
             )
         return v
-    
-    @validator("ceiling_height")
-    def validate_ceiling(cls, v):
+
+    @field_validator("ceiling_height")
+    @classmethod
+    def validate_ceiling(cls, v: float) -> float:
         if v < 7:
             raise ValueError(
                 "Ceiling height below 7 feet is very unusual. "
                 "Please check your measurement."
             )
         return v
-    
+
+    # Helper methods
+
     def get_area(self) -> float:
         return round(self.length * self.width, 2)
-    
+
     def get_dimensions_summary(self) -> str:
         unit_short = "ft" if self.unit == DimensionUnit.FEET else "m"
         area = self.get_area()
