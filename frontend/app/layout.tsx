@@ -1,19 +1,15 @@
-// app/layout.tsx
-// Root layout — wraps every page in the app.
-// Sets fonts, metadata, and global structure.
-
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 
-const inter = Inter({ subsets: ["latin"] })
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+})
 
 export const metadata: Metadata = {
   title: "AI Interior Designer",
-  description:
-    "Intelligent AI-powered interior design assistant. " +
-    "Get professional room layouts, furniture recommendations, " +
-    "and concept renders instantly.",
+  description: "AI-powered interior design assistant",
 }
 
 export default function RootLayout({
@@ -22,8 +18,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
+    <html lang="en" className={inter.variable}>
+      <body className="bg-[#0a0a0a] text-white min-h-screen w-full">
         {children}
       </body>
     </html>

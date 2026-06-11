@@ -1,233 +1,207 @@
 // app/page.tsx
 // The landing page — first thing users see.
 // Shows what the product does and has one clear CTA button.
-
 "use client"
 
 import { useRouter } from "next/navigation"
-import Button from "@/components/ui/Button"
 import {
-  Sparkles,
-  Layout,
-  Palette,
-  ImageIcon,
-  ArrowRight,
-  CheckCircle,
+  Sparkles, ArrowRight, Layout,
+  Palette, ImageIcon, CheckCircle
 } from "lucide-react"
 
 export default function LandingPage() {
   const router = useRouter()
 
   return (
-    <main className="min-h-screen bg-[#0a0a0a] text-white">
+    <main className="min-h-screen bg-[#0a0a0a] text-white w-full">
 
-      {/* ── Navigation ── */}
-      <nav className="border-b border-[#1e1e1e] px-6 py-4">
-        <div className="mx-auto flex max-w-6xl items-center justify-between">
+      {/* Nav */}
+      <nav className="w-full border-b border-[#1e1e1e] px-6 py-4">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-[#c9a96e]" />
-            <span className="font-semibold text-white">
+            <Sparkles className="w-5 h-5 text-[#c9a96e]" />
+            <span className="font-semibold text-white text-sm">
               AI Interior Designer
             </span>
           </div>
-          <Button
-            size="sm"
+          <button
             onClick={() => router.push("/design")}
+            className="bg-[#c9a96e] text-black text-sm font-medium px-4 py-2 rounded-lg hover:bg-[#a07840] transition-colors"
           >
             Start Designing
-          </Button>
+          </button>
         </div>
       </nav>
 
-      {/* ── Hero Section ── */}
-      <section className="mx-auto max-w-6xl px-6 py-24 text-center">
-        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#c9a96e]/30 bg-[#c9a96e]/10 px-4 py-1.5 text-sm text-[#c9a96e]">
-          <Sparkles className="h-3.5 w-3.5" />
+      {/* Hero */}
+      <section className="max-w-6xl mx-auto px-6 pt-24 pb-16 text-center">
+        <div className="inline-flex items-center gap-2 border border-[#c9a96e]/30 bg-[#c9a96e]/10 text-[#c9a96e] text-xs px-4 py-1.5 rounded-full mb-6">
+          <Sparkles className="w-3 h-3" />
           Powered by Llama 3 + Stable Diffusion XL
         </div>
 
-        <h1 className="mb-6 text-5xl font-bold leading-tight tracking-tight md:text-6xl">
+        <h1 className="text-5xl md:text-6xl font-bold leading-tight mb-6">
           Your AI Interior
           <span className="block text-[#c9a96e]">Design Assistant</span>
         </h1>
 
-        <p className="mx-auto mb-10 max-w-2xl text-lg text-gray-400">
-          Describe your room. Get a professional design plan with furniture
-          layout, color palette, lighting recommendations, and a concept
-          render — all in under 60 seconds.
+        <p className="text-gray-400 text-lg max-w-xl mx-auto mb-10 leading-relaxed">
+          Describe your room and get a professional design plan with
+          furniture layout, color palette, and a concept render in under
+          60 seconds.
         </p>
 
-        <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-          <Button
-            size="lg"
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+          <button
             onClick={() => router.push("/design")}
-            className="group w-full sm:w-auto"
+            className="flex items-center gap-2 bg-[#c9a96e] text-black font-semibold px-8 py-3.5 rounded-xl hover:bg-[#a07840] transition-all w-full sm:w-auto justify-center"
           >
             Design My Room
-            <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-          </Button>
-          <Button
-            size="lg"
-            variant="secondary"
+            <ArrowRight className="w-4 h-4" />
+          </button>
+          <button
             onClick={() =>
               document
                 .getElementById("how-it-works")
                 ?.scrollIntoView({ behavior: "smooth" })
             }
-            className="w-full sm:w-auto"
+            className="flex items-center gap-2 bg-[#1e1e1e] text-white font-medium px-8 py-3.5 rounded-xl border border-[#2a2a2a] hover:bg-[#2a2a2a] transition-all w-full sm:w-auto justify-center"
           >
             See How It Works
-          </Button>
+          </button>
         </div>
       </section>
 
-      {/* ── Example Output Preview ── */}
-      <section className="mx-auto max-w-6xl px-6 pb-20">
-        <div className="overflow-hidden rounded-2xl border border-[#2a2a2a] bg-[#141414]">
-          <div className="border-b border-[#2a2a2a] px-6 py-3">
-            <div className="flex items-center gap-2">
-              <div className="h-3 w-3 rounded-full bg-red-500/60" />
-              <div className="h-3 w-3 rounded-full bg-yellow-500/60" />
-              <div className="h-3 w-3 rounded-full bg-green-500/60" />
-              <span className="ml-2 text-xs text-gray-500">
-                AI Interior Designer — Example Output
-              </span>
-            </div>
+      {/* Preview Card */}
+      <section className="max-w-6xl mx-auto px-6 pb-20">
+        <div className="rounded-2xl border border-[#2a2a2a] bg-[#141414] overflow-hidden">
+          {/* Window bar */}
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-[#2a2a2a] bg-[#0f0f0f]">
+            <div className="w-3 h-3 rounded-full bg-red-500/50" />
+            <div className="w-3 h-3 rounded-full bg-yellow-500/50" />
+            <div className="w-3 h-3 rounded-full bg-green-500/50" />
+            <span className="ml-2 text-xs text-gray-600">
+              Example Output
+            </span>
           </div>
-          <div className="grid md:grid-cols-2">
-            {/* Left: Sample plan text */}
-            <div className="border-r border-[#2a2a2a] p-8">
-              <div className="mb-3 text-xs font-medium uppercase tracking-wider text-[#c9a96e]">
+          <div className="grid md:grid-cols-2 min-h-[280px]">
+            {/* Plan side */}
+            <div className="p-8 border-r border-[#2a2a2a]">
+              <div className="text-xs font-semibold uppercase tracking-widest text-[#c9a96e] mb-4">
                 Design Plan
               </div>
-              <div className="mb-6">
-                <div className="mb-1 text-xs text-gray-500">Theme</div>
-                <div className="font-medium text-white">
+              <div className="mb-4">
+                <p className="text-xs text-gray-500 mb-1">Theme</p>
+                <p className="font-semibold text-white">
                   Scandinavian Minimalist
-                </div>
+                </p>
               </div>
-              <div className="mb-6">
-                <div className="mb-2 text-xs text-gray-500">
-                  Color Palette
-                </div>
+              <div className="mb-4">
+                <p className="text-xs text-gray-500 mb-2">Color Palette</p>
                 <div className="flex gap-2">
-                  {["#F5F5F0", "#C4A265", "#4A4A4A", "#B8A99A"].map(
-                    (color) => (
-                      <div
-                        key={color}
-                        className="h-8 w-8 rounded-full border border-[#2a2a2a]"
-                        style={{ backgroundColor: color }}
-                      />
-                    )
-                  )}
+                  {["#F5F5F0","#C4A265","#4A4A4A","#B8A99A"].map(c => (
+                    <div
+                      key={c}
+                      className="w-8 h-8 rounded-full border border-[#2a2a2a]"
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
                 </div>
               </div>
               <div>
-                <div className="mb-2 text-xs text-gray-500">
-                  Key Furniture
-                </div>
-                <div className="space-y-2">
+                <p className="text-xs text-gray-500 mb-2">Key Furniture</p>
+                <div className="space-y-1.5">
                   {[
-                    "3-Seater Linen Sofa — North wall, centered",
+                    "3-Seater Sofa — North wall, centered",
                     "Oak Coffee Table — 45cm from sofa",
                     "Slim TV Unit — South wall focal point",
-                  ].map((item) => (
-                    <div
-                      key={item}
-                      className="flex items-start gap-2 text-sm text-gray-300"
-                    >
-                      <CheckCircle className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-[#c9a96e]" />
+                  ].map(item => (
+                    <div key={item} className="flex items-center gap-2 text-sm text-gray-300">
+                      <CheckCircle className="w-3.5 h-3.5 text-[#c9a96e] flex-shrink-0" />
                       {item}
                     </div>
                   ))}
                 </div>
               </div>
             </div>
-            {/* Right: Sample render placeholder */}
-            <div className="flex items-center justify-center bg-[#0f0f0f] p-8">
-              <div className="text-center">
-                <ImageIcon className="mx-auto mb-3 h-12 w-12 text-gray-600" />
-                <div className="text-sm text-gray-500">
-                  AI Concept Render
-                </div>
-                <div className="mt-1 text-xs text-gray-600">
-                  Generated by Stable Diffusion XL
-                </div>
+            {/* Render side */}
+            <div className="flex flex-col items-center justify-center bg-[#0f0f0f] p-8 gap-3">
+              <div className="w-16 h-16 rounded-2xl bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center">
+                <ImageIcon className="w-7 h-7 text-gray-600" />
               </div>
+              <p className="text-sm text-gray-500">AI Concept Render</p>
+              <p className="text-xs text-gray-700">
+                Generated by Stable Diffusion XL
+              </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── How It Works ── */}
+      {/* How It Works */}
       <section
         id="how-it-works"
-        className="mx-auto max-w-6xl px-6 pb-24"
+        className="max-w-6xl mx-auto px-6 pb-24"
       >
-        <h2 className="mb-12 text-center text-3xl font-bold">
+        <h2 className="text-3xl font-bold text-center mb-12">
           How It Works
         </h2>
-        <div className="grid gap-8 md:grid-cols-3">
+        <div className="grid md:grid-cols-3 gap-8">
           {[
             {
               icon: Layout,
               step: "01",
               title: "Describe Your Room",
-              description:
-                "Tell us your room type, dimensions, budget, and style " +
-                "preferences using our simple guided form.",
+              desc: "Tell us your room type, dimensions, budget, and style preferences using our simple guided form.",
             },
             {
               icon: Sparkles,
               step: "02",
               title: "AI Plans Your Space",
-              description:
-                "Our AI analyzes your constraints and generates a " +
-                "complete design plan with furniture placement, colors, " +
-                "and lighting — with reasoning for every decision.",
+              desc: "Our AI analyzes your constraints and generates a complete design plan with furniture placement, colors, and lighting — with reasoning for every decision.",
             },
             {
               icon: Palette,
               step: "03",
               title: "See Your Design",
-              description:
-                "Receive a concept render of your room alongside a " +
-                "detailed design report. Refine anything by simply " +
-                "asking the AI to change it.",
+              desc: "Receive a concept render alongside a detailed design report. Refine anything by simply asking the AI to change it.",
             },
-          ].map(({ icon: Icon, step, title, description }) => (
-            <div key={step} className="relative">
-              <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[#c9a96e]/10">
-                <Icon className="h-6 w-6 text-[#c9a96e]" />
-              </div>
-              <div className="absolute right-0 top-0 text-5xl font-bold text-[#1e1e1e]">
+          ].map(({ icon: Icon, step, title, desc }) => (
+            <div key={step} className="relative p-6 rounded-2xl bg-[#141414] border border-[#2a2a2a]">
+              <div className="absolute top-4 right-4 text-4xl font-bold text-[#1e1e1e]">
                 {step}
               </div>
-              <h3 className="mb-2 text-lg font-semibold">{title}</h3>
-              <p className="text-sm text-gray-400">{description}</p>
+              <div className="w-11 h-11 rounded-xl bg-[#c9a96e]/10 flex items-center justify-center mb-4">
+                <Icon className="w-5 h-5 text-[#c9a96e]" />
+              </div>
+              <h3 className="font-semibold text-white mb-2">{title}</h3>
+              <p className="text-sm text-gray-400 leading-relaxed">{desc}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* ── CTA Banner ── */}
-      <section className="mx-auto max-w-6xl px-6 pb-24">
-        <div className="rounded-2xl bg-gradient-to-r from-[#c9a96e]/20 to-[#a07840]/20 border border-[#c9a96e]/30 p-12 text-center">
-          <h2 className="mb-4 text-3xl font-bold">
+      {/* CTA */}
+      <section className="max-w-6xl mx-auto px-6 pb-24">
+        <div className="rounded-2xl bg-gradient-to-br from-[#1a1408] to-[#141414] border border-[#c9a96e]/20 p-12 text-center">
+          <h2 className="text-3xl font-bold mb-3">
             Ready to Design Your Room?
           </h2>
-          <p className="mb-8 text-gray-400">
+          <p className="text-gray-400 mb-8">
             Free to use. No account required. Results in under 60 seconds.
           </p>
-          <Button size="lg" onClick={() => router.push("/design")}>
+          <button
+            onClick={() => router.push("/design")}
+            className="inline-flex items-center gap-2 bg-[#c9a96e] text-black font-semibold px-8 py-3.5 rounded-xl hover:bg-[#a07840] transition-all"
+          >
             Start Designing Now
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
+            <ArrowRight className="w-4 h-4" />
+          </button>
         </div>
       </section>
 
-      {/* ── Footer ── */}
-      <footer className="border-t border-[#1e1e1e] px-6 py-8 text-center text-sm text-gray-600">
+      {/* Footer */}
+      <footer className="border-t border-[#1e1e1e] py-8 text-center text-xs text-gray-700">
         Built with Next.js · FastAPI · Llama 3 · Stable Diffusion XL
       </footer>
     </main>
