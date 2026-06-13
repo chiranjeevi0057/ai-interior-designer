@@ -1,19 +1,57 @@
 # services/planner.py
-# AI Planning Service — connects to Ollama/Groq via LangChain.
-#
-# RIGHT NOW: Returns a hardcoded mock design plan so we can
-# test all the API endpoints without needing Ollama running.
-#
-# PHASE 9: This gets replaced with real LangChain + Ollama logic.
+# The real AI planning engine.
+# Uses LangChain + Ollama (local) or Groq (production)
+# to generate and refine interior design plans.
 
-from models.design_plan import (
-    DesignPlan, RoomTheme, ColorSwatch,
-    FurnitureItem, LightingItem
-)
+import json
+from typing import Optional
+from langchain_core.messages import SystemMessage, HumanMessage
+from langchain_ollama import ChatOllama
+from models.design_plan import DesignPlan
 from models.intake import IntakePayload
+from services.prompts import (
+    SYSTEM_PROMPT,
+    INITIAL_DESIGN_PROMPT,
+    REFINEMENT_PROMPT
+)
+from services.output_parser import output_parser
+from utils.helpers import format_conversation_history, format_intake_for_prompt
+from config import settings
 
 
 class InteriorDesignPlanner:
+    """
+    The AI brain of the application.
+    Generates and refines interior design plans using an LLM.
+    """
+
+    def __init__(self):
+        self.llm = self._initialize_llm()
+        print(f"✓ AI Planner initialized with provider: {settings.llm_provider}")
+
+    def _initialize_llm(self):
+        if settings.llm_provider == "groq" and settings.groq_api_key:
+            try:
+                from langchain_groq import ChatGroq
+                print("Using Groq API for LLM inference")
+                return ChatGroq(
+                    model=settings.groq_model,
+                    temperature=0.3,
+                    max_tokens=4000,
+                    groq_api_key=settings.groq_api_key
+                )
+            except Exception as e:
+                print(f"Groq initialization failed: {e}. Falling back to Ollama.")
+
+        print(f"Using local Ollama with model: {settings.ollama_model}")
+        return ChatOllama(
+            model=settings.ollama_model,
+            temperature=0.1,
+            format="json",
+            num_predict=3000,
+            num_ctx=4096,
+            base_url="http://127.0.0.1:11434"
+        )
 
     async def generate_plan(
         self,
@@ -22,151 +60,30 @@ class InteriorDesignPlanner:
     ) -> DesignPlan:
         """
         Generate a complete design plan from intake form data.
-        PHASE 9: Replace mock with real LangChain + LLM call.
+        Makes a real LLM call and validates the response.
         """
+        print(f"\n{'='*50}")
+        print(f"Generating design plan for session: {session_id}")
+        print(f"Room: {intake.room_type}, {intake.get_dimensions_summary()}")
+        print(f"Style: {intake.style_preference}, Budget: {intake.budget_range}")
+        print(f"{'='*50}")
 
-        # ── MOCK RESPONSE (temporary until Phase 9) ──────────────
-        # This returns a realistic-looking plan so the entire
-        # frontend and backend can be built and tested now.
-        return DesignPlan(
+        # Build the prompt
+        user_prompt = self._build_initial_prompt(intake, session_id)
+
+        # Make the LLM call with retry logic
+        result = await self._call_llm_with_retry(
+            user_prompt=user_prompt,
             session_id=session_id,
-            version=1,
-            room_type=intake.room_type.value,
-            room_dimensions_summary=intake.get_dimensions_summary(),
-            spatial_observations=[
-                f"The {intake.get_area()} sq ft floor area suits "
-                f"a {intake.style_preference.value} layout well.",
-                f"{intake.light_level.value} natural light influences "
-                f"the color palette selection.",
-                "Standard ceiling height allows full furniture range."
-            ],
-            recommended_theme=RoomTheme(intake.style_preference.value)
-            if intake.style_preference.value in [t.value for t in RoomTheme]
-            else RoomTheme.CONTEMPORARY,
-            theme_rationale=(
-                f"The {intake.style_preference.value} theme suits your "
-                f"{intake.room_type.value} given the available space and "
-                f"{intake.light_level.value.lower()} natural light conditions."
-            ),
-            color_palette=[
-                ColorSwatch(
-                    name="Warm White",
-                    hex_code="#F5F5F0",
-                    usage="Primary wall color"
-                ),
-                ColorSwatch(
-                    name="Soft Taupe",
-                    hex_code="#B8A99A",
-                    usage="Secondary accent walls"
-                ),
-                ColorSwatch(
-                    name="Natural Oak",
-                    hex_code="#C4A265",
-                    usage="Wood furniture tones"
-                ),
-                ColorSwatch(
-                    name="Charcoal",
-                    hex_code="#4A4A4A",
-                    usage="Accent pieces and frames"
-                ),
-            ],
-            color_palette_notes=(
-                "This palette creates a calm, cohesive feel that "
-                "complements the chosen style."
-            ),
-            furniture_plan=[
-                FurnitureItem(
-                    id="item_1",
-                    name="3-Seater Sofa",
-                    category="Seating",
-                    recommended_dimensions="220cm W x 90cm D x 85cm H",
-                    placement="Against the main wall, centered",
-                    placement_reasoning=(
-                        "Anchors the seating area and maximizes "
-                        "open floor space for traffic flow."
-                    ),
-                    priority="essential",
-                    estimated_cost_range="15000-45000"
-                ),
-                FurnitureItem(
-                    id="item_2",
-                    name="Coffee Table",
-                    category="Tables",
-                    recommended_dimensions="120cm W x 60cm D x 45cm H",
-                    placement="Centered in front of sofa, 45cm gap",
-                    placement_reasoning=(
-                        "Standard 45cm gap allows comfortable leg room "
-                        "while keeping items within easy reach."
-                    ),
-                    priority="essential",
-                    estimated_cost_range="5000-15000"
-                ),
-                FurnitureItem(
-                    id="item_3",
-                    name="TV Unit",
-                    category="Storage",
-                    recommended_dimensions="150cm W x 40cm D x 50cm H",
-                    placement="On the wall opposite the sofa",
-                    placement_reasoning=(
-                        "Creates the room focal point and maintains "
-                        "comfortable viewing distance."
-                    ),
-                    priority="essential",
-                    estimated_cost_range="8000-20000"
-                ),
-            ],
-            furniture_plan_notes=(
-                "Furniture is arranged to maximize open floor space "
-                "while creating a clear focal point."
-            ),
-            traffic_flow_notes=(
-                "A minimum 90cm walkway is maintained on all primary "
-                "paths through the room."
-            ),
-            lighting_plan=[
-                LightingItem(
-                    type="Ambient",
-                    description="Ceiling-mounted LED panel light",
-                    placement="Center of ceiling",
-                    reasoning="Provides even base illumination across the room."
-                ),
-                LightingItem(
-                    type="Accent",
-                    description="Floor lamp with warm bulb",
-                    placement="Corner beside the sofa",
-                    reasoning=(
-                        "Creates a warm reading corner and adds "
-                        "depth to the room at night."
-                    )
-                ),
-            ],
-            key_design_principles=[
-                "Focal point established with TV wall as the visual anchor",
-                "60-30-10 color rule applied across walls, furniture, and accents",
-                "Traffic flow maintained with 90cm minimum clearance",
-            ],
-            design_warnings=[],
-            budget_tier=intake.budget_range.value,
-            estimated_total_range="35000-80000",
-            budget_notes=(
-                "Prioritise sofa and lighting first. "
-                "Coffee table and storage can be added gradually."
-            ),
-            image_prompt_keywords=[
-                intake.room_type.value.lower(),
-                intake.style_preference.value.lower(),
-                "interior design",
-                "natural light",
-                "warm tones",
-                "professional photography",
-            ],
-            style_descriptors=[
-                "clean and airy",
-                "warm neutral tones",
-                "functional layout",
-            ],
-            requires_visual_update=False,
+            max_retries=2
         )
+
+        if result is None:
+            print("LLM failed to return valid JSON. Using fallback plan.")
+            return self._create_fallback_plan(intake, session_id)
+
+        print(f"✓ Design plan generated successfully (version {result.version})")
+        return result
 
     async def refine_plan(
         self,
@@ -174,23 +91,232 @@ class InteriorDesignPlanner:
         user_message: str
     ) -> DesignPlan:
         """
-        Refine existing plan based on user message.
-        PHASE 9: Replace with real LangChain refinement chain.
+        Refine an existing design plan based on user feedback.
+        Sends full context to the LLM so it understands the history.
         """
         current_plan = session.current_plan
+        print(f"\n{'='*50}")
+        print(f"Refining plan for session: {session.session_id}")
+        print(f"User request: {user_message}")
+        print(f"Current version: {current_plan.version}")
+        print(f"{'='*50}")
 
-        # For now just increment version and note the change
-        updated_plan = current_plan.model_copy(
-            update={
-                "version": current_plan.version + 1,
-                "design_warnings": [
-                    f"Refinement requested: '{user_message}' "
-                    f"(AI integration coming in Phase 9)"
-                ],
-                "requires_visual_update": False,
-            }
+        # Format conversation history
+        history = format_conversation_history(
+            session.conversation_history,
+            max_turns=6
         )
-        return updated_plan
+
+        # Format the original intake
+        original_intake = format_intake_for_prompt(session.intake)
+
+        # Build the refinement prompt
+        user_prompt = REFINEMENT_PROMPT.format(
+            original_intake=original_intake,
+            current_version=current_plan.version,
+            current_plan=current_plan.model_dump_json(indent=2),
+            conversation_history=history,
+            user_message=user_message,
+            next_version=current_plan.version + 1
+        )
+
+        # Make the LLM call
+        result = await self._call_llm_with_retry(
+            user_prompt=user_prompt,
+            session_id=session.session_id,
+            max_retries=2
+        )
+
+        if result is None:
+            print("Refinement failed. Returning current plan with warning.")
+            # Return current plan with a warning rather than crashing
+            return current_plan.model_copy(
+                update={
+                    "version": current_plan.version + 1,
+                    "design_warnings": [
+                        f"Could not process request: '{user_message}'. "
+                        "Please try rephrasing your request."
+                    ],
+                    "requires_visual_update": False,
+                }
+            )
+
+        print(f"✓ Plan refined successfully (version {result.version})")
+        return result
+
+    async def _call_llm_with_retry(
+        self,
+        user_prompt: str,
+        session_id: str,
+        max_retries: int = 2
+    ) -> Optional[DesignPlan]:
+        """
+        Call the LLM and retry if the output is invalid.
+        This handles the common case where the LLM returns
+        slightly malformed JSON on the first attempt.
+        """
+        messages = [
+            SystemMessage(content=SYSTEM_PROMPT),
+            HumanMessage(content=user_prompt)
+        ]
+
+        for attempt in range(max_retries):
+            try:
+                print(f"LLM call attempt {attempt + 1}/{max_retries}...")
+
+                # Make the actual LLM call
+                response = await self.llm.ainvoke(messages)
+                raw_output = response.content
+
+                print(f"Raw output length: {len(raw_output)} characters")
+                print(f"First 200 chars: {raw_output[:200]}")
+
+                # Try to parse the output
+                plan = output_parser.parse(raw_output, session_id)
+
+                if plan is not None:
+                    return plan
+
+                # If parsing failed, add correction instruction
+                print(f"Attempt {attempt + 1} failed — output was not valid JSON")
+
+                if attempt < max_retries - 1:
+                    # Add a correction message for the next attempt
+                    messages.append(HumanMessage(
+                        content=f"Your previous response was not valid JSON. "
+                                f"You returned: {raw_output[:500]}... "
+                                f"Please return ONLY valid JSON matching the schema. "
+                                f"No markdown, no backticks, no explanation text."
+                    ))
+
+            except Exception as e:
+                print(f"LLM call error on attempt {attempt + 1}: {e}")
+                if attempt == max_retries - 1:
+                    raise
+
+        return None
+
+    def _build_initial_prompt(
+        self,
+        intake: IntakePayload,
+        session_id: str
+    ) -> str:
+        """Build the initial design generation prompt from intake data."""
+
+        must_have = (
+            ", ".join(intake.must_have_items)
+            if intake.must_have_items
+            else "None specified"
+        )
+
+        return INITIAL_DESIGN_PROMPT.format(
+            room_type=intake.room_type.value,
+            dimensions_summary=intake.get_dimensions_summary(),
+            area=intake.get_area(),
+            unit="ft" if intake.unit.value == "feet" else "m",
+            light_level=intake.light_level.value,
+            style_preference=intake.style_preference.value,
+            color_mood=intake.color_mood.value,
+            budget_range=intake.budget_range.value,
+            must_have_items=must_have,
+            items_to_avoid=intake.items_to_avoid or "None",
+            special_constraints=intake.special_constraints or "None",
+            session_id=session_id
+        )
+
+    def _create_fallback_plan(
+        self,
+        intake: IntakePayload,
+        session_id: str
+    ) -> DesignPlan:
+        """
+        Returns a basic but valid plan when the LLM completely fails.
+        This ensures the app never crashes due to LLM issues.
+        """
+        from models.design_plan import (
+            RoomTheme, ColorSwatch, FurnitureItem, LightingItem
+        )
+
+        # Map style preference to theme
+        theme_map = {
+            "Minimalist": RoomTheme.MINIMALIST,
+            "Scandinavian": RoomTheme.SCANDINAVIAN,
+            "Industrial": RoomTheme.INDUSTRIAL,
+            "Bohemian": RoomTheme.BOHEMIAN,
+            "Contemporary": RoomTheme.CONTEMPORARY,
+            "Traditional": RoomTheme.TRADITIONAL,
+            "Mid-Century Modern": RoomTheme.MID_CENTURY_MODERN,
+            "Japandi": RoomTheme.JAPANDI,
+        }
+        theme = theme_map.get(
+            intake.style_preference.value,
+            RoomTheme.CONTEMPORARY
+        )
+
+        return DesignPlan(
+            session_id=session_id,
+            version=1,
+            room_type=intake.room_type.value,
+            room_dimensions_summary=intake.get_dimensions_summary(),
+            spatial_observations=[
+                f"Room area of {intake.get_area()} sq ft analyzed.",
+                f"{intake.light_level.value} natural light noted.",
+            ],
+            recommended_theme=theme,
+            theme_rationale=(
+                f"The {intake.style_preference.value} theme was selected "
+                f"based on your preferences."
+            ),
+            color_palette=[
+                ColorSwatch(name="Warm White", hex_code="#F5F5F0",
+                           usage="Primary wall color"),
+                ColorSwatch(name="Natural Oak", hex_code="#C4A265",
+                           usage="Wood furniture tones"),
+                ColorSwatch(name="Charcoal", hex_code="#4A4A4A",
+                           usage="Accent pieces"),
+                ColorSwatch(name="Soft Taupe", hex_code="#B8A99A",
+                           usage="Secondary surfaces"),
+            ],
+            color_palette_notes="A balanced neutral palette suitable for the chosen style.",
+            furniture_plan=[
+                FurnitureItem(
+                    id="item_1",
+                    name="Primary Seating",
+                    category="Seating",
+                    recommended_dimensions="200cm W x 85cm D x 80cm H",
+                    placement="Against the main wall, centered",
+                    placement_reasoning="Anchors the room and maximizes open space.",
+                    priority="essential",
+                    estimated_cost_range="15000-40000"
+                ),
+            ],
+            furniture_plan_notes="Layout optimized for the available space.",
+            traffic_flow_notes="90cm clearance maintained on primary pathways.",
+            lighting_plan=[
+                LightingItem(
+                    type="Ambient",
+                    description="Ceiling LED panel",
+                    placement="Center of ceiling",
+                    reasoning="Provides even base illumination."
+                ),
+            ],
+            key_design_principles=[
+                "Focal point established",
+                "Traffic flow maintained",
+                "Scale appropriate to room dimensions",
+            ],
+            design_warnings=["AI response was incomplete. Please try regenerating."],
+            budget_tier=intake.budget_range.value,
+            estimated_total_range="30000-80000",
+            budget_notes="Prioritize essential pieces first.",
+            image_prompt_keywords=[
+                intake.room_type.value.lower(),
+                intake.style_preference.value.lower(),
+                "interior design", "natural light", "professional photography"
+            ],
+            style_descriptors=["clean", "functional", "balanced"],
+            requires_visual_update=False,
+        )
 
 
 # Single instance used throughout the app

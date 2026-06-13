@@ -1,8 +1,8 @@
 # utils/helpers.py
-# Small helper functions used throughout the backend.
+# Helper functions used throughout the backend.
 
-from datetime import datetime
 from typing import List
+import re
 
 
 def format_conversation_history(
@@ -10,7 +10,7 @@ def format_conversation_history(
     max_turns: int = 6
 ) -> str:
     """
-    Format conversation history for injection into LLM prompts.
+    Format conversation history for LLM prompts.
     Only keeps the most recent N turns to avoid context overflow.
     """
     if not history:
@@ -30,6 +30,7 @@ def format_conversation_history(
 def format_intake_for_prompt(intake) -> str:
     """
     Convert intake form data into a readable string for LLM prompts.
+    Used in refinement calls so the LLM remembers the original constraints.
     """
     must_have = (
         ", ".join(intake.must_have_items)
@@ -37,20 +38,15 @@ def format_intake_for_prompt(intake) -> str:
         else "None specified"
     )
 
-    constraints = intake.special_constraints or "None specified"
-    avoid = intake.items_to_avoid or "None specified"
-
-    return f"""
-Room Type: {intake.room_type.value}
+    return f"""Room Type: {intake.room_type.value}
 Dimensions: {intake.get_dimensions_summary()}
 Natural Light: {intake.light_level.value}
 Style Preference: {intake.style_preference.value}
 Color Mood: {intake.color_mood.value}
 Budget Range: {intake.budget_range.value} INR
 Must-Have Items: {must_have}
-Items to Avoid: {avoid}
-Special Constraints: {constraints}
-""".strip()
+Items to Avoid: {intake.items_to_avoid or 'None specified'}
+Special Constraints: {intake.special_constraints or 'None specified'}"""
 
 
 def sanitize_session_id(session_id: str) -> bool:
@@ -58,9 +54,9 @@ def sanitize_session_id(session_id: str) -> bool:
     Validate that a session ID looks like a real UUID.
     Prevents injection attacks.
     """
-    import re
     uuid_pattern = re.compile(
-        r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+        r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}'
+        r'-[0-9a-f]{4}-[0-9a-f]{12}$'
     )
     return bool(uuid_pattern.match(session_id.lower()))
 

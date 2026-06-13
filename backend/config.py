@@ -7,11 +7,11 @@ class Settings(BaseSettings):
     
     # AI Configuration
     ollama_base_url: str = "http://localhost:11434"
-    ollama_model: str = "llama3"
+    ollama_model: str = "llama3.2:1b"
     groq_api_key: Optional[str] = None
-    groq_model: str = "llama3-8b-8192"
-    llm_provider: str = "ollama"
-    
+    groq_model: str = "llama-3.1-8b-instant"
+    llm_provider: str = "groq"
+
     # Database
     database_url: str
     supabase_url: Optional[str] = None

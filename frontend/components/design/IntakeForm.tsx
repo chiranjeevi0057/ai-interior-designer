@@ -58,7 +58,7 @@ export default function IntakeForm() {
   const {
     currentStep, intake, updateIntake, setCurrentStep,
     setDesignPlan, setSessionId, setSessionState,
-    setLoading, setError,
+    setLoading, setError, setImageStatus,
   } = useDesignStore()
 
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -71,23 +71,45 @@ export default function IntakeForm() {
   }
 
   const handleSubmit = async () => {
-    setIsSubmitting(true)
-    setSessionState("planning")
-    setLoading(true)
-    setError(null)
-    try {
-      const response = await generateDesign(intake as IntakePayload)
-      setSessionId(response.session_id)
-      setDesignPlan(response.design_plan)
-      setSessionState(response.session_state)
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to generate design.")
-      setSessionState("idle")
-    } finally {
-      setIsSubmitting(false)
-      setLoading(false)
+  setIsSubmitting(true)
+  setLoading(true)
+  setError(null)
+  setSessionState("planning") // Show loading screen
+
+  try {
+    const payload = intake as IntakePayload
+    const response = await generateDesign(payload)
+
+    // Set plan FIRST — this is what triggers the results page
+    setSessionId(response.session_id)
+    setDesignPlan(response.design_plan)
+    setImageStatus("generating")
+
+    // Set state AFTER plan is stored
+    setSessionState("plan_ready")
+
+  } catch (err: unknown) {
+    let message = "Failed to generate design. Please try again."
+
+    if (err && typeof err === "object" && "response" in err) {
+      const axiosErr = err as {
+        response?: { data?: { detail?: string }; status?: number }
+      }
+      message = axiosErr.response?.data?.detail
+        || `Server error (${axiosErr.response?.status})`
+    } else if (err instanceof Error) {
+      message = err.message
     }
+
+    console.error("Design generation error:", err)
+    setError(message)
+    setSessionState("idle") // Go back to form on error
+
+  } finally {
+    setIsSubmitting(false)
+    setLoading(false)
   }
+}
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col items-center justify-start px-4 py-12">

@@ -13,15 +13,15 @@ import LoadingScreen from "@/components/design/LoadingScreen"
 import ResultsPage from "@/components/design/ResultsPage"
 
 export default function DesignPage() {
-  const { sessionState, designPlan } = useDesignStore()
+  const { sessionState, designPlan, isLoading } = useDesignStore()
 
   // Show loading screen while AI is working
-  if (sessionState === "planning") {
+  if (sessionState === "planning" || isLoading) {
     return <LoadingScreen />
   }
 
-  // Show results once plan is ready
-  if (designPlan && sessionState !== "idle") {
+  // Show results if we have a design plan — regardless of session state
+  if (designPlan !== null) {
     return <ResultsPage />
   }
 
