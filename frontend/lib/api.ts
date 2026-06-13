@@ -140,3 +140,52 @@ export async function checkHealth(): Promise<boolean> {
     return false
   }
 }
+
+// Furniture recommendation types
+export interface FurnitureProduct {
+  id: string
+  name: string
+  category: string
+  style_tags: string[]
+  min_price: number
+  max_price: number
+  dimensions: string
+  material: string
+  description: string
+  buy_links: Array<{ store: string; url: string }>
+  suitable_rooms: string[]
+  budget_tiers: string[]
+}
+
+export interface FurnitureRecommendation {
+  ai_item: {
+    name: string
+    placement: string
+    reasoning: string
+    priority: string
+    estimated_cost: string
+  }
+  products: FurnitureProduct[]
+}
+
+export interface FurnitureSummaryResponse {
+  success: boolean
+  session_id: string
+  recommendations: FurnitureRecommendation[]
+  budget_summary: {
+    total_min: number
+    total_max: number
+    essential_min: number
+    essential_max: number
+    total_range: string
+    essential_range: string
+  }
+}
+
+// Get furniture recommendations for a session
+export async function getFurnitureRecommendations(
+  sessionId: string
+): Promise<FurnitureSummaryResponse> {
+  const response = await api.get(`/api/design/${sessionId}/furniture`)
+  return response.data
+}

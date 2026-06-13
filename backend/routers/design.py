@@ -7,6 +7,7 @@
 
 import asyncio
 from fastapi import APIRouter, HTTPException, BackgroundTasks
+from services.furniture_db import furniture_recommender
 from models.intake import IntakePayload
 from models.responses import (
     DesignGenerateResponse,
@@ -235,4 +236,38 @@ async def get_design(session_id: str):
         "design_plan": session.current_plan,
         "image_status": session.image_status,
         "image_url": session.image_url,
+    }
+@router.get("/{session_id}/furniture")
+async def get_furniture_recommendations(session_id: str):
+    """
+    Get enriched furniture recommendations for a design session.
+    Matches AI plan items with real products and pricing.
+    """
+    if not sanitize_session_id(session_id):
+        raise HTTPException(status_code=400, detail="Invalid session ID.")
+
+    session = session_store.get(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found.")
+
+    if not session.current_plan:
+        raise HTTPException(status_code=400, detail="No design plan found.")
+
+    from services.furniture_db import furniture_recommender
+
+    plan = session.current_plan
+    recommendations = furniture_recommender.get_recommendations(
+        furniture_items=plan.furniture_plan,
+        style=plan.recommended_theme.value,
+        budget_tier=plan.budget_tier,
+        room_type=plan.room_type
+    )
+
+    budget_summary = furniture_recommender.get_budget_summary(recommendations)
+
+    return {
+        "success": True,
+        "session_id": session_id,
+        "recommendations": recommendations,
+        "budget_summary": budget_summary
     }

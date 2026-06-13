@@ -4,6 +4,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import FurniturePanel from "@/components/design/FurniturePanel"
 import { useDesignStore } from "@/lib/store"
 import { getImageStatus, refineDesign } from "@/lib/api"
 import {
@@ -262,6 +263,11 @@ export default function ResultsPage() {
                 </p>
               )}
             </div>
+
+            {/* Furniture Recommendations */}
+            {sessionId && (
+              <FurniturePanel sessionId={sessionId} />
+            )}
 
             {/* Refinement chat */}
             <div className="bg-[#141414] border border-[#2a2a2a] rounded-2xl p-5">
