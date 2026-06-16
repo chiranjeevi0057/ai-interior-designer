@@ -26,37 +26,42 @@ router = APIRouter(prefix="/api/design", tags=["Design"])
 async def run_image_generation(session_id: str):
     """
     Background task: generates image after plan is ready.
-    Runs separately so the user gets the plan immediately
-    without waiting for the image.
+    Runs after the design plan response is sent to frontend.
     """
+    # Small delay to ensure session is fully saved
+    await asyncio.sleep(1)
+
     session = session_store.get(session_id)
     if not session or not session.current_plan:
+        print(f"Session {session_id} not found for image generation")
         return
 
     try:
-        # Update status so frontend knows image is being made
+        print(f"\n🖼️  Starting image generation for session: {session_id}")
         session.image_status = "generating"
         session.session_state = "image_generating"
 
-        # Call the image generation service
+        # Generate the image
         result = await image_service.generate_image(
             plan=session.current_plan,
             intake=session.intake
         )
 
-        # Store the result in the session
+        # Store result
         session.image_url = result["image_url"]
         session.image_job_id = result["job_id"]
         session.image_status = "complete"
         session.session_state = "complete"
         session.image_prompt = result["prompt_used"]
 
+        print(f"✓ Image generation complete for session: {session_id}")
+        print(f"  Method used: {result.get('method', 'unknown')}")
+
     except Exception as e:
-        # Image generation failed — plan is still available
         session.image_status = "failed"
         session.session_state = "plan_ready"
-        print(f"Image generation failed for session {session_id}: {e}")
-
+        print(f"✗ Image generation failed for session {session_id}: {e}")
+        
 
 @router.post("/generate", response_model=DesignGenerateResponse)
 async def generate_design(

@@ -238,9 +238,16 @@ export default function ResultsPage() {
                   <div className="text-center space-y-3">
                     {(imageStatus === "generating" || imageStatus === "pending") ? (
                       <>
-                        <div className="w-10 h-10 border-2 border-[#c9a96e]/20 border-t-[#c9a96e] rounded-full animate-spin mx-auto" />
-                        <p className="text-sm text-gray-400">Generating your concept render...</p>
-                        <p className="text-xs text-gray-600">May take up to 60 seconds</p>
+                      <div className="w-10 h-10 border-2 border-[#c9a96e]/20 border-t-[#c9a96e] rounded-full animate-spin mx-auto" />
+                      <p className="text-sm text-gray-400 mt-3">
+                        Generating your concept render...
+                      </p>
+                      <p className="text-xs text-gray-600 mt-1">
+                        Stable Diffusion XL is painting your room
+                      </p>
+                      <p className="text-xs text-gray-700 mt-1">
+                        This may take 30–90 seconds
+                      </p>
                       </>
                     ) : imageStatus === "failed" ? (
                       <>
