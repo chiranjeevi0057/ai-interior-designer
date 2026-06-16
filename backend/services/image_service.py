@@ -1,45 +1,23 @@
 # services/image_service.py
-# Generates concept renders using Stable Diffusion XL
-# via HuggingFace Spaces Gradio API.
-# Falls back gracefully if generation fails.
+# Generates concept renders using multiple free services.
+# Tries each method in order until one works.
 
 import asyncio
 import httpx
-import base64
-import os
-from typing import Optional
+from urllib.parse import quote
 from models.design_plan import DesignPlan
 from models.intake import IntakePayload
 from services.prompt_synthesizer import prompt_synthesizer
-from config import settings
 
 
 class ImageGenerationService:
     """
-    Handles image generation via HuggingFace Spaces.
-    Uses SDXL-Lightning for fast generation on free GPU.
+    Generates room concept renders using free image generation APIs.
+    Falls back gracefully through multiple providers.
     """
 
-    # Public HuggingFace Spaces that support SDXL
-    # We try them in order until one works
-    HF_SPACES = [
-        "https://bytedance-sdxl-lightning.hf.space",
-        "https://stabilityai-sdxl.hf.space",
-    ]
-
-    # Direct HuggingFace Inference API (uses your token)
-    HF_INFERENCE_URL = (
-        "https://api-inference.huggingface.co/models/"
-        "stabilityai/stable-diffusion-xl-base-1.0"
-    )
-
     def __init__(self):
-        self.token = settings.huggingface_token
-        print(f"✓ Image Service initialized")
-        if self.token and self.token != "your_huggingface_token_here":
-            print("  Using HuggingFace Inference API")
-        else:
-            print("  No HF token — will use public Spaces")
+        print("✓ Image Service initialized")
 
     async def generate_image(
         self,
@@ -48,153 +26,172 @@ class ImageGenerationService:
     ) -> dict:
         """
         Generate a concept render from the design plan.
-        Tries multiple methods in order of preference.
+        Tries multiple methods in order.
         """
         # Build the optimized prompt
         prompt_data = prompt_synthesizer.synthesize(plan, intake)
+        prompt = prompt_data["positive_prompt"]
+        negative = prompt_data["negative_prompt"]
 
-        print(f"\n🎨 Generating image for session: {plan.session_id}")
-        print(f"Prompt: {prompt_data['positive_prompt'][:150]}...")
+        print(f"\n Generating image for session: {plan.session_id}")
+        print(f"Prompt preview: {prompt[:120]}...")
 
-        # Method 1: HuggingFace Inference API (if token available)
-        if self.token and self.token != "your_huggingface_token_here":
-            result = await self._generate_via_hf_api(prompt_data)
-            if result:
-                return result
-
-        # Method 2: Try public Spaces via Gradio API
-        result = await self._generate_via_gradio(prompt_data)
+        # Method 1 — Pollinations AI (free, no key needed)
+        result = await self._generate_via_pollinations(prompt)
         if result:
             return result
 
-        # Method 3: Fallback — return a curated placeholder
-        print("All generation methods failed — using fallback image")
+        # Method 2 — Stable Horde (free community GPU)
+        result = await self._generate_via_stable_horde(prompt, negative)
+        if result:
+            return result
+
+        # Method 3 — Fallback curated photo
+        print("All methods failed — using fallback photo")
         return self._get_fallback_image(intake.room_type.value)
 
-    async def _generate_via_hf_api(
+    async def _generate_via_pollinations(
         self,
-        prompt_data: dict
-    ) -> Optional[dict]:
+        prompt: str
+    ) -> dict | None:
         """
-        Generate using HuggingFace Inference API.
-        Requires a valid HF token.
+        Generate using Pollinations.ai — completely free, no API key.
+        Returns image as a URL directly.
         """
         try:
-            print("Trying HuggingFace Inference API...")
-            async with httpx.AsyncClient(timeout=120) as client:
-                response = await client.post(
-                    self.HF_INFERENCE_URL,
-                    headers={
-                        "Authorization": f"Bearer {self.token}",
-                        "Content-Type": "application/json"
-                    },
-                    json={
-                        "inputs": prompt_data["positive_prompt"],
-                        "parameters": {
-                            "negative_prompt": prompt_data["negative_prompt"],
-                            "width": 1024,
-                            "height": 768,
-                            "num_inference_steps": 25,
-                            "guidance_scale": 7.5,
-                        }
-                    }
+            print("Trying Pollinations AI...")
+
+            # Pollinations generates images via URL
+            # We just need to encode the prompt and request the image
+            encoded_prompt = quote(prompt)
+            image_url = (
+                f"https://image.pollinations.ai/prompt/{encoded_prompt}"
+                f"?width=1024&height=768&model=flux&nologo=true&enhance=true"
+            )
+
+            # Verify the URL is reachable
+            async with httpx.AsyncClient(timeout=90) as client:
+                response = await client.get(
+                    image_url,
+                    follow_redirects=True
                 )
 
                 if response.status_code == 200:
-                    # Response is raw image bytes
-                    image_bytes = response.content
-                    image_b64 = base64.b64encode(image_bytes).decode("utf-8")
-                    image_url = f"data:image/jpeg;base64,{image_b64}"
-
-                    print("✓ Image generated via HF Inference API")
-                    return {
-                        "job_id": f"hf-{prompt_data['positive_prompt'][:20]}",
-                        "image_url": image_url,
-                        "status": "complete",
-                        "prompt_used": prompt_data["positive_prompt"],
-                        "method": "hf_inference_api"
-                    }
-                elif response.status_code == 503:
-                    # Model is loading — wait and retry once
-                    print("Model loading, waiting 20 seconds...")
-                    await asyncio.sleep(20)
-                    response2 = await client.post(
-                        self.HF_INFERENCE_URL,
-                        headers={
-                            "Authorization": f"Bearer {self.token}",
-                            "Content-Type": "application/json"
-                        },
-                        json={
-                            "inputs": prompt_data["positive_prompt"],
-                            "parameters": {
-                                "negative_prompt": prompt_data["negative_prompt"],
-                                "width": 1024,
-                                "height": 768,
-                                "num_inference_steps": 25,
-                            }
-                        }
-                    )
-                    if response2.status_code == 200:
-                        image_bytes = response2.content
-                        image_b64 = base64.b64encode(image_bytes).decode("utf-8")
-                        image_url = f"data:image/jpeg;base64,{image_b64}"
-                        print("✓ Image generated via HF Inference API (retry)")
+                    content_type = response.headers.get("content-type", "")
+                    if "image" in content_type:
+                        print("✓ Image generated via Pollinations AI")
                         return {
-                            "job_id": "hf-retry",
+                            "job_id": "pollinations",
                             "image_url": image_url,
                             "status": "complete",
-                            "prompt_used": prompt_data["positive_prompt"],
-                            "method": "hf_inference_api"
+                            "prompt_used": prompt,
+                            "method": "pollinations"
                         }
+                    else:
+                        print(f"Pollinations returned non-image: {content_type}")
+                        return None
                 else:
-                    print(f"HF API error: {response.status_code} — {response.text[:200]}")
+                    print(f"Pollinations status: {response.status_code}")
                     return None
 
         except Exception as e:
-            print(f"HF Inference API failed: {e}")
+            print(f"Pollinations failed: {e}")
             return None
 
-    async def _generate_via_gradio(
+    async def _generate_via_stable_horde(
         self,
-        prompt_data: dict
-    ) -> Optional[dict]:
+        prompt: str,
+        negative_prompt: str
+    ) -> dict | None:
         """
-        Generate using public HuggingFace Spaces Gradio API.
-        No token required.
+        Generate using Stable Horde — free community GPU network.
+        Slower but reliable. No key needed (uses anonymous key).
         """
         try:
-            print("Trying Gradio Space API...")
-            from gradio_client import Client
+            print("Trying Stable Horde...")
 
-            # Try SDXL-Lightning (fastest free SDXL)
-            client = Client("ByteDance/SDXL-Lightning")
+            async with httpx.AsyncClient(timeout=30) as client:
+                # Submit generation job
+                submit_response = await client.post(
+                    "https://stablehorde.net/api/v2/generate/async",
+                    headers={
+                        "apikey": "0000000000",  # Anonymous key
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "prompt": f"{prompt} ### {negative_prompt}",
+                        "params": {
+                            "width": 1024,
+                            "height": 768,
+                            "steps": 20,
+                            "cfg_scale": 7.5,
+                            "sampler_name": "k_euler",
+                        },
+                        "models": ["stable_diffusion"],
+                        "r2": True,
+                    }
+                )
 
-            result = await asyncio.to_thread(
-                client.predict,
-                prompt_data["positive_prompt"],  # prompt
-                "1-Step",                         # num steps (fastest)
-                api_name="/generate_image"
-            )
+                if submit_response.status_code != 202:
+                    print(f"Horde submit failed: {submit_response.status_code}")
+                    return None
 
-            if result and isinstance(result, str):
-                print(f"✓ Image generated via Gradio: {result[:50]}")
-                return {
-                    "job_id": "gradio-sdxl",
-                    "image_url": result,
-                    "status": "complete",
-                    "prompt_used": prompt_data["positive_prompt"],
-                    "method": "gradio_space"
-                }
+                job_id = submit_response.json().get("id")
+                if not job_id:
+                    return None
+
+                print(f"Horde job submitted: {job_id}")
+
+                # Poll for completion (max 3 minutes)
+                for attempt in range(18):
+                    await asyncio.sleep(10)
+
+                    check_response = await client.get(
+                        f"https://stablehorde.net/api/v2/generate/check/{job_id}"
+                    )
+
+                    if check_response.status_code != 200:
+                        continue
+
+                    check_data = check_response.json()
+                    done = check_data.get("done", False)
+
+                    if done:
+                        # Get the result
+                        status_response = await client.get(
+                            f"https://stablehorde.net/api/v2/generate/status/{job_id}"
+                        )
+                        if status_response.status_code == 200:
+                            generations = status_response.json().get(
+                                "generations", []
+                            )
+                            if generations:
+                                img_url = generations[0].get("img")
+                                if img_url:
+                                    print("✓ Image generated via Stable Horde")
+                                    return {
+                                        "job_id": job_id,
+                                        "image_url": img_url,
+                                        "status": "complete",
+                                        "prompt_used": prompt,
+                                        "method": "stable_horde"
+                                    }
+                        break
+
+                    waited = (attempt + 1) * 10
+                    print(f"Horde waiting... {waited}s")
+
+                print("Horde timed out")
+                return None
 
         except Exception as e:
-            print(f"Gradio Space failed: {e}")
-
-        return None
+            print(f"Stable Horde failed: {e}")
+            return None
 
     def _get_fallback_image(self, room_type: str) -> dict:
         """
-        Returns a curated real interior photo as fallback.
-        These are high quality Unsplash photos of real rooms.
+        Returns a curated high-quality interior photo.
+        Used when all generation methods fail.
         """
         fallback_images = {
             "Living Room": (
@@ -234,11 +231,8 @@ class ImageGenerationService:
         }
 
     async def check_status(self, job_id: str) -> dict:
-        """Check generation status — currently all jobs complete synchronously."""
-        return {
-            "job_id": job_id,
-            "status": "complete"
-        }
+        """Check status — jobs complete synchronously."""
+        return {"job_id": job_id, "status": "complete"}
 
 
 # Single instance
