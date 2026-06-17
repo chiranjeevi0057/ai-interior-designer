@@ -38,25 +38,42 @@ export default function ResultsPage() {
   }, [sessionId, imageStatus])
 
   const handleRefine = async () => {
-    if (!refineInput.trim() || !sessionId) return
-    setIsRefining(true)
-    addConversationTurn("user", refineInput)
-    const msg = refineInput
-    setRefineInput("")
-    try {
-      const res = await refineDesign(sessionId, msg)
-      setDesignPlan(res.design_plan)
-      setSessionState(res.session_state)
-      addConversationTurn("assistant",
-        `Updated to v${res.design_plan.version}. ${
-          res.requires_visual_update ? "Generating new render..." : "Minor update — render unchanged."
-        }`
-      )
-      if (res.requires_visual_update) { setImageStatus("generating"); setImageUrl("") }
-    } catch {
-      addConversationTurn("assistant", "Sorry, I had trouble updating the design. Please try again.")
-    } finally { setIsRefining(false) }
+  if (!refineInput.trim() || !sessionId) return
+
+  setIsRefining(true)
+  addConversationTurn("user", refineInput)
+  const msg = refineInput
+  setRefineInput("")
+
+  try {
+    const res = await refineDesign(sessionId, msg)
+    setDesignPlan(res.design_plan)
+    setSessionState(res.session_state)
+
+    addConversationTurn(
+      "assistant",
+      `Design updated to version ${res.design_plan.version}. ${
+        res.requires_visual_update
+          ? "Generating new render..."
+          : "Text updated — render unchanged."
+      }`
+    )
+
+    // Reset image if regeneration was triggered
+    if (res.requires_visual_update) {
+      setImageUrl("")
+      setImageStatus("generating")
+    }
+
+  } catch {
+    addConversationTurn(
+      "assistant",
+      "Sorry, I had trouble updating the design. Please try again."
+    )
+  } finally {
+    setIsRefining(false)
   }
+}
 
   if (!designPlan) return null
 

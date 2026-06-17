@@ -66,11 +66,15 @@ class ImageGenerationService:
             encoded_prompt = quote(prompt)
             image_url = (
                 f"https://image.pollinations.ai/prompt/{encoded_prompt}"
-                f"?width=1024&height=768&model=flux&nologo=true&enhance=true"
+                f"?width=1280&height=960"
+                f"&model=flux"
+                f"&nologo=true"
+                f"&enhance=true"
+                f"&seed={hash(prompt) % 99999}"
             )
 
             # Verify the URL is reachable
-            async with httpx.AsyncClient(timeout=90) as client:
+            async with httpx.AsyncClient(timeout=120) as client:
                 response = await client.get(
                     image_url,
                     follow_redirects=True
@@ -82,13 +86,13 @@ class ImageGenerationService:
                         print("✓ Image generated via Pollinations AI")
                         return {
                             "job_id": "pollinations",
-                            "image_url": image_url,
+                            "image_url": str(response.url),
                             "status": "complete",
                             "prompt_used": prompt,
                             "method": "pollinations"
                         }
                     else:
-                        print(f"Pollinations returned non-image: {content_type}")
+                        print(f"Pollinations returned: {content_type}")
                         return None
                 else:
                     print(f"Pollinations status: {response.status_code}")

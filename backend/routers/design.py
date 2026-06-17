@@ -132,30 +132,14 @@ async def refine_design(
     user_message: str,
     background_tasks: BackgroundTasks
 ):
-    """
-    Refine an existing design plan based on user feedback.
-
-    1. Validates the session exists and is active
-    2. Adds user message to conversation history
-    3. Calls AI planner with full context to update the plan
-    4. If visual update needed, starts new image generation
-    5. Returns the updated design plan
-    """
-
-    # Validate session ID format
     if not sanitize_session_id(session_id):
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid session ID format."
-        )
+        raise HTTPException(status_code=400, detail="Invalid session ID.")
 
-    # Get the session
     session = session_store.get(session_id)
     if not session:
         raise HTTPException(
             status_code=404,
-            detail="Session not found or expired. "
-                   "Please start a new design."
+            detail="Session not found or expired. Please start a new design."
         )
 
     if not session.current_plan:
@@ -164,33 +148,44 @@ async def refine_design(
             detail="No design plan found in this session."
         )
 
-    # Add user message to conversation history
-    session.add_conversation_turn(
-        role="user",
-        content=user_message
-    )
+    session.add_conversation_turn(role="user", content=user_message)
 
     try:
-        # Refine the plan based on user message
         session.session_state = "planning"
         updated_plan = await planner.refine_plan(
             session=session,
             user_message=user_message
         )
 
-        # Update the session
         session.current_plan = updated_plan
         session.session_state = "plan_ready"
 
-        # Add AI response to conversation history
         session.add_conversation_turn(
             role="assistant",
-            content=f"Updated design plan to version {updated_plan.version}"
+            content=f"Updated design to version {updated_plan.version}"
         )
 
-        # Only regenerate image if the plan significantly changed
-        if updated_plan.requires_visual_update:
-            session.image_status = "pending"
+        # Determine if image needs regeneration
+        # Keywords that clearly change the visual appearance
+        visual_keywords = [
+            "color", "colour", "theme", "style", "furniture",
+            "sofa", "bed", "table", "chair", "minimalist", "modern",
+            "dark", "light", "bright", "palette", "wall", "floor",
+            "scandinavian", "industrial", "bohemian", "traditional",
+            "remove", "add", "change", "replace", "swap"
+        ]
+
+        message_lower = user_message.lower()
+        should_regenerate = (
+            updated_plan.requires_visual_update
+            or any(kw in message_lower for kw in visual_keywords)
+        )
+
+        if should_regenerate:
+            # Reset image status so frontend shows loading
+            session.image_status = "generating"
+            session.image_url = None
+            session.session_state = "image_generating"
             background_tasks.add_task(
                 run_image_generation,
                 session.session_id
@@ -202,12 +197,14 @@ async def refine_design(
             session_state=session.session_state,
             design_plan=updated_plan,
             image_status=session.image_status,
-            requires_visual_update=updated_plan.requires_visual_update,
-            message="Design plan updated successfully."
+            requires_visual_update=should_regenerate,
+            message="Design updated successfully."
         )
 
     except Exception as e:
         session.session_state = "plan_ready"
+        import traceback
+        print(traceback.format_exc())
         raise HTTPException(
             status_code=500,
             detail=f"Refinement failed: {str(e)}"
