@@ -1,32 +1,40 @@
 # services/prompts.py
-# Prompts optimized for smaller LLMs (llama3.2:1b)
-# Shorter and more direct than full prompts.
-# Groq/larger models also work well with these.
+# Prompts engineered for room-type accuracy.
+# Room type is repeated explicitly multiple times
+# to prevent the model from defaulting to generic furniture.
 
-SYSTEM_PROMPT = """You are an expert interior designer. You generate complete room design plans in JSON format.
+SYSTEM_PROMPT = """You are an expert interior designer specializing in Indian homes. You generate precise, room-specific interior design plans in JSON format.
 
-RULES:
+CRITICAL RULES:
 1. Return ONLY valid JSON. No text before or after. No markdown. No backticks.
-2. Never recommend furniture that cannot fit in the given room dimensions.
-3. All costs must be in Indian Rupees reflecting current Indian market prices.
-4. Every furniture item must have a specific placement and reasoning.
-5. Stay within the specified budget."""
+2. ALWAYS design specifically for the EXACT room type given. Never substitute furniture from other room types.
+3. A HOME OFFICE needs: desk, office chair, storage, monitor setup. NOT sofas or TV units.
+4. A BEDROOM needs: bed, wardrobe, side tables, dresser. NOT sofas or dining tables.
+5. A LIVING ROOM needs: sofa, coffee table, TV unit. NOT desks or beds.
+6. A DINING ROOM needs: dining table, dining chairs, sideboard. NOT sofas or beds.
+7. A STUDIO APARTMENT needs: multifunctional furniture that serves sleeping, living and working.
+8. Never recommend furniture that cannot physically fit in the given dimensions.
+9. All costs must be in Indian Rupees with realistic Indian market prices.
+10. Stay strictly within the specified budget."""
 
 
-INITIAL_DESIGN_PROMPT = """Create an interior design plan for this room and return it as JSON.
+INITIAL_DESIGN_PROMPT = """Design a {room_type} interior. This is a {room_type} — not a living room, not a bedroom — specifically a {room_type}.
 
-ROOM:
-- Type: {room_type}
-- Size: {dimensions_summary}
-- Light: {light_level}
-- Style: {style_preference}
+ROOM DETAILS:
+- Room Type: {room_type} (IMPORTANT: design specifically for a {room_type})
+- Dimensions: {dimensions_summary}
+- Natural Light: {light_level}
+- Preferred Style: {style_preference}
 - Color Mood: {color_mood}
 - Budget: {budget_range} INR
-- Must have: {must_have_items}
+- Must Include: {must_have_items}
 - Avoid: {items_to_avoid}
-- Notes: {special_constraints}
+- Special Notes: {special_constraints}
 
-Return this exact JSON (fill in all values, no placeholders):
+FURNITURE GUIDE FOR THIS SPECIFIC ROOM TYPE:
+{room_furniture_guide}
+
+Return ONLY this JSON with no other text. Fill every field with specific, accurate values:
 
 {{
   "session_id": "{session_id}",
@@ -34,106 +42,127 @@ Return this exact JSON (fill in all values, no placeholders):
   "room_type": "{room_type}",
   "room_dimensions_summary": "{dimensions_summary}",
   "spatial_observations": [
-    "observation 1 about this specific room",
-    "observation 2 about light in this room",
-    "observation 3 about space usage"
+    "specific observation about {room_type} usage in this space",
+    "observation about how {light_level} light affects this {room_type}",
+    "observation about furniture arrangement given {dimensions_summary}"
   ],
   "recommended_theme": "{style_preference}",
-  "theme_rationale": "2 sentences explaining why {style_preference} suits this {room_type}",
+  "theme_rationale": "2 sentences explaining exactly why {style_preference} suits this {room_type} given {light_level} light and {dimensions_summary} dimensions",
   "color_palette": [
-    {{"name": "color name", "hex_code": "#XXXXXX", "usage": "wall color"}},
-    {{"name": "color name", "hex_code": "#XXXXXX", "usage": "furniture color"}},
-    {{"name": "color name", "hex_code": "#XXXXXX", "usage": "accent color"}},
-    {{"name": "color name", "hex_code": "#XXXXXX", "usage": "trim color"}}
+    {{"name": "specific color name", "hex_code": "#XXXXXX", "usage": "primary wall color for {room_type}"}},
+    {{"name": "specific color name", "hex_code": "#XXXXXX", "usage": "main furniture color"}},
+    {{"name": "specific color name", "hex_code": "#XXXXXX", "usage": "accent color"}},
+    {{"name": "specific color name", "hex_code": "#XXXXXX", "usage": "trim and detail color"}}
   ],
-  "color_palette_notes": "why this palette works for {color_mood} mood",
+  "color_palette_notes": "why this {color_mood} palette suits this {room_type}",
   "furniture_plan": [
-    {{
-      "id": "item_1",
-      "name": "Main Sofa",
-      "category": "Seating",
-      "recommended_dimensions": "200cm W x 85cm D x 80cm H",
-      "placement": "Against the main wall, centered",
-      "placement_reasoning": "Anchors the room and creates focal point",
-      "priority": "essential",
-      "estimated_cost_range": "15000-40000"
-    }},
-    {{
-      "id": "item_2",
-      "name": "Coffee Table",
-      "category": "Tables",
-      "recommended_dimensions": "110cm W x 55cm D x 45cm H",
-      "placement": "Center of seating area, 45cm from sofa",
-      "placement_reasoning": "Within easy reach from sofa, maintains traffic flow",
-      "priority": "essential",
-      "estimated_cost_range": "5000-15000"
-    }},
-    {{
-      "id": "item_3",
-      "name": "TV Unit",
-      "category": "Storage",
-      "recommended_dimensions": "150cm W x 40cm D x 50cm H",
-      "placement": "Wall opposite to sofa",
-      "placement_reasoning": "Optimal viewing distance and creates focal point",
-      "priority": "essential",
-      "estimated_cost_range": "8000-20000"
-    }}
+    {furniture_items_placeholder}
   ],
-  "furniture_plan_notes": "overall layout strategy for this {room_type}",
-  "traffic_flow_notes": "90cm clearance maintained on all main pathways",
+  "furniture_plan_notes": "overall layout strategy specific to this {room_type}",
+  "traffic_flow_notes": "how people move through this {room_type} with this layout",
   "lighting_plan": [
     {{
       "type": "Ambient",
-      "description": "Ceiling LED panel light",
-      "placement": "Center of ceiling",
-      "reasoning": "Even base illumination across the room"
+      "description": "specific ceiling light suitable for a {room_type}",
+      "placement": "center of ceiling",
+      "reasoning": "provides base illumination for {room_type} activities"
     }},
     {{
-      "type": "Accent",
-      "description": "Floor lamp with warm bulb",
-      "placement": "Corner beside seating",
-      "reasoning": "Creates warm reading corner and adds depth"
+      "type": "Task",
+      "description": "specific task light for {room_type} activities",
+      "placement": "specific position relevant to {room_type}",
+      "reasoning": "supports primary activities in a {room_type}"
     }}
   ],
   "key_design_principles": [
-    "Focal point established",
-    "60-30-10 color rule applied",
-    "Traffic flow maintained with 90cm clearance"
+    "principle specifically applied to this {room_type} layout",
+    "principle about {style_preference} style in this {room_type}",
+    "principle about optimizing {room_type} functionality"
   ],
   "design_warnings": [],
   "budget_tier": "{budget_range}",
-  "estimated_total_range": "35000-90000",
-  "budget_notes": "Prioritise sofa and lighting first",
+  "estimated_total_range": "realistic range in INR for this {room_type}",
+  "budget_notes": "budget advice specific to furnishing a {room_type} in India",
   "image_prompt_keywords": [
     "{room_type} interior",
-    "{style_preference} style",
-    "natural light",
-    "professional interior photography",
-    "8k quality"
+    "{style_preference} {room_type}",
+    "{room_type} furniture",
+    "{light_level} natural light",
+    "{color_mood} color scheme",
+    "professional {room_type} photography"
   ],
   "style_descriptors": [
-    "clean and functional",
-    "well lit",
-    "modern"
+    "{style_preference} aesthetic",
+    "{color_mood} mood",
+    "functional {room_type}"
   ],
   "requires_visual_update": false,
   "visual_update_reason": null
 }}"""
 
 
-REFINEMENT_PROMPT = """Update this interior design plan based on the user request.
+# Room-specific furniture guides injected into the prompt
+ROOM_FURNITURE_GUIDES = {
+    "Living Room": """
+LIVING ROOM FURNITURE (use these, not bedroom or office furniture):
+- Primary seating: 2-seater or 3-seater sofa (essential)
+- Coffee table: centered in front of sofa (essential)
+- TV unit: on wall opposite sofa (essential)
+- Optional: accent chair, side tables, bookshelf, area rug
+- DO NOT include: beds, desks, dining tables, office chairs""",
 
-ROOM CONSTRAINTS (never change these):
+    "Bedroom": """
+BEDROOM FURNITURE (use these, not living room or office furniture):
+- Bed: queen or king size with headboard (essential)
+- Wardrobe: for clothing storage (essential)
+- Side tables: one or two beside bed (essential)
+- Optional: dresser, study corner with small desk, floor lamp
+- DO NOT include: sofas, TV units, dining tables, office setups""",
+
+    "Home Office": """
+HOME OFFICE FURNITURE (use these, not living room or bedroom furniture):
+- Study desk / work desk: large enough for monitor and work (essential)
+- Ergonomic office chair: with lumbar support (essential)
+- Bookshelf or storage unit: for files and books (essential)
+- Optional: small sofa or accent chair for reading, whiteboard
+- DO NOT include: beds, sofas, coffee tables, TV units, dining furniture""",
+
+    "Dining Room": """
+DINING ROOM FURNITURE (use these, not living room or bedroom furniture):
+- Dining table: sized for the family (essential)
+- Dining chairs: matching set (essential)
+- Sideboard or buffet: for crockery storage (essential)
+- Optional: display cabinet, bar trolley, pendant lighting
+- DO NOT include: sofas, beds, TV units, office desks""",
+
+    "Studio Apartment": """
+STUDIO APARTMENT FURNITURE (multifunctional pieces that serve multiple purposes):
+- Sofa bed or murphy bed: sleeping and seating combined (essential)
+- Compact dining table with foldable chairs (essential)
+- Wardrobe with integrated study nook if possible (essential)
+- Optional: room divider, compact kitchen island, wall shelves
+- Focus on space-saving, multifunctional furniture throughout""",
+}
+
+
+REFINEMENT_PROMPT = """Update this {room_type} interior design plan based on the user's request.
+
+ORIGINAL ROOM (never change these constraints):
 {original_intake}
 
-CURRENT PLAN (version {current_version}):
+CURRENT {room_type} DESIGN PLAN (version {current_version}):
 {current_plan}
+
+CONVERSATION HISTORY:
+{conversation_history}
 
 USER REQUEST: "{user_message}"
 
-Rules:
-1. Only change what the user asked for
-2. Keep all room dimensions and constraints
-3. Set version to {next_version}
-4. Set requires_visual_update to true if theme or major furniture changed
-5. Return the COMPLETE updated plan as JSON only"""
+RULES:
+1. This is a {room_type} — keep all furniture appropriate for a {room_type}
+2. Only change what the user explicitly requested
+3. Keep room dimensions, budget tier, and room type unchanged
+4. Set version to {next_version}
+5. Set requires_visual_update to true if theme, style, major furniture, or colors changed
+6. Set requires_visual_update to false for minor text changes only
+7. Return the COMPLETE updated plan as valid JSON only — no other text"""

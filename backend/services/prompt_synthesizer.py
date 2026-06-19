@@ -21,91 +21,88 @@ class ImagePromptSynthesizer:
         plan: DesignPlan,
         intake: IntakePayload
     ) -> dict:
-        """
-        Build a natural language prompt optimized for Flux model.
-        More descriptive and specific than keyword lists.
-        """
-
-        # Room and style foundation
         room = intake.room_type.value
         style = plan.recommended_theme.value
         light = intake.light_level.value
 
-        # Get primary color
         primary_color = (
             plan.color_palette[0].name
-            if plan.color_palette else "neutral"
+            if plan.color_palette else "neutral white"
         )
         secondary_color = (
             plan.color_palette[1].name
-            if len(plan.color_palette) > 1 else "warm white"
+            if len(plan.color_palette) > 1 else "warm beige"
         )
 
-        # Get essential furniture pieces
-        essential_furniture = [
-            item.name for item in plan.furniture_plan
-            if item.priority == "essential"
-        ][:3]
-
-        furniture_str = (
-            ", ".join(essential_furniture)
-            if essential_furniture
-            else "appropriate furniture"
+        # Room-specific scene descriptions
+        # These explicitly describe what should be IN the image
+        room_scene_map = {
+            "Living Room": (
+            "featuring a sofa, coffee table, and TV unit. "
+            "Comfortable seating area with decorative cushions"
+        ),
+        "Bedroom": (
+            "featuring a large bed with headboard, wardrobe, "
+            "and bedside tables. Relaxing sleeping environment"
+        ),
+        "Home Office": (
+            "featuring a large work desk, ergonomic office chair, "
+            "and bookshelves. Professional productive workspace"
+        ),
+        "Dining Room": (
+            "featuring a dining table with chairs and a sideboard. "
+            "Elegant space for family meals"
+        ),
+        "Studio Apartment": (
+            "featuring multifunctional furniture including a sofa bed "
+            "and compact dining area. Smart small space design"
+        ),
+        }
+        room_scene = room_scene_map.get(
+            room,
+            "featuring appropriate furniture for the space"
         )
 
-        # Light description
+        # Light descriptions
         light_map = {
-            "Bright": "flooded with bright natural sunlight through large windows",
-            "Moderate": "softly lit with warm natural light",
-            "Low": "warmly lit with soft artificial lighting and cozy atmosphere"
+        "Bright": "flooded with bright natural sunlight through large windows",
+        "Moderate": "softly lit with warm natural light",
+        "Low": "warmly lit with layered artificial lighting"
         }
         light_desc = light_map.get(light, "naturally lit")
 
-        # Color mood description
-        mood_map = {
-            "Warm and Cozy": "warm and inviting with cozy atmosphere",
-            "Cool and Calm": "cool and serene with calm atmosphere",
-            "Bold and Vibrant": "bold and energetic with vibrant colors",
-            "Neutral and Clean": "clean and minimal with neutral tones"
+        # Style-specific visual details
+        style_map = {
+        "Scandinavian": "light birch wood, white walls, linen textiles, hygge atmosphere",
+        "Minimalist": "clean lines, white space, essential furniture only, zen calm",
+        "Industrial": "exposed concrete, metal accents, Edison bulbs, raw urban aesthetic",
+        "Bohemian": "layered rugs, plants, eclectic cushions, warm earthy tones",
+        "Contemporary": "sleek surfaces, neutral palette, clean geometry, modern finishes",
+        "Traditional": "rich wood tones, classic moldings, elegant fabrics, timeless style",
+        "Mid-Century Modern": "tapered legs, organic curves, retro palette, teak wood",
+        "Japandi": "natural wood, wabi-sabi, muted tones, minimal decor, bamboo accents"
         }
-        mood_desc = mood_map.get(
-            intake.color_mood.value,
-            "balanced and harmonious"
-        )
+        style_desc = style_map.get(style, "tastefully decorated")
 
-        # Style specific additions
-        style_additions = {
-            "Scandinavian": "light wood accents, white walls, clean lines, hygge atmosphere",
-            "Minimalist": "clean lines, uncluttered space, essential furniture only, zen atmosphere",
-            "Industrial": "exposed brick or concrete, metal accents, raw materials, urban feel",
-            "Bohemian": "layered textiles, plants, eclectic decor, warm colors, artistic",
-            "Contemporary": "sleek modern furniture, neutral palette, glass and metal accents",
-            "Traditional": "classic furniture, rich wood tones, elegant decor, timeless style",
-            "Mid-Century Modern": "organic shapes, tapered legs, retro palette, vintage feel",
-            "Japandi": "wabi-sabi aesthetic, natural materials, muted tones, zen simplicity"
-        }
-        style_desc = style_additions.get(style, "tastefully decorated")
-
-        # Build natural language prompt
+        # Build the prompt — room type appears 3 times for emphasis
         positive_prompt = (
-            f"A beautifully designed {style} {room.lower()}, "
-            f"{light_desc}. "
-            f"The room features {furniture_str}. "
-            f"Color scheme uses {primary_color} and {secondary_color} tones. "
-            f"The space is {mood_desc}. "
-            f"Interior design details include {style_desc}. "
-            f"Shot as professional interior design photography, "
-            f"ultra realistic, 8k resolution, perfect composition, "
-            f"architectural digest quality, no people."
+        f"A beautifully designed {style} {room.lower()}, "
+        f"{room_scene}. "
+        f"The {room.lower()} is {light_desc}. "
+        f"Color palette features {primary_color} and {secondary_color}. "
+        f"Interior design style: {style_desc}. "
+        f"This is a {room.lower()} — photographed as a professional "
+        f"interior design shoot, ultra photorealistic, 8k, "
+        f"architectural digest quality, perfect lighting, no people."
         )
-
+        
         return {
-            "positive_prompt": positive_prompt,
-            "negative_prompt": self.NEGATIVE_PROMPT,
-            "width": 1024,
-            "height": 768,
-            "num_inference_steps": 25,
-            "guidance_scale": 7.5,
+        "positive_prompt": positive_prompt,
+        "negative_prompt": self.NEGATIVE_PROMPT,
+        "width": 1280,
+        "height": 960,
+        "num_inference_steps": 25,
+        "guidance_scale": 7.5,
         }
 
 

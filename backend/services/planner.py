@@ -90,10 +90,6 @@ class InteriorDesignPlanner:
         session,
         user_message: str
     ) -> DesignPlan:
-        """
-        Refine an existing design plan based on user feedback.
-        Sends full context to the LLM so it understands the history.
-        """
         current_plan = session.current_plan
         print(f"\n{'='*50}")
         print(f"Refining plan for session: {session.session_id}")
@@ -101,26 +97,22 @@ class InteriorDesignPlanner:
         print(f"Current version: {current_plan.version}")
         print(f"{'='*50}")
 
-        # Format conversation history
         history = format_conversation_history(
             session.conversation_history,
             max_turns=6
         )
-
-        # Format the original intake
         original_intake = format_intake_for_prompt(session.intake)
 
-        # Build the refinement prompt
         user_prompt = REFINEMENT_PROMPT.format(
-            original_intake=original_intake,
-            current_version=current_plan.version,
-            current_plan=current_plan.model_dump_json(indent=2),
-            conversation_history=history,
-            user_message=user_message,
-            next_version=current_plan.version + 1
+        room_type=current_plan.room_type,
+        original_intake=original_intake,
+        current_version=current_plan.version,
+        current_plan=current_plan.model_dump_json(indent=2),
+        conversation_history=history,
+        user_message=user_message,
+        next_version=current_plan.version + 1
         )
 
-        # Make the LLM call
         result = await self._call_llm_with_retry(
             user_prompt=user_prompt,
             session_id=session.session_id,
@@ -129,13 +121,12 @@ class InteriorDesignPlanner:
 
         if result is None:
             print("Refinement failed. Returning current plan with warning.")
-            # Return current plan with a warning rather than crashing
             return current_plan.model_copy(
                 update={
                     "version": current_plan.version + 1,
                     "design_warnings": [
-                        f"Could not process request: '{user_message}'. "
-                        "Please try rephrasing your request."
+                        f"Could not process: '{user_message}'. "
+                        "Please try rephrasing."
                     ],
                     "requires_visual_update": False,
                 }
@@ -201,27 +192,200 @@ class InteriorDesignPlanner:
         intake: IntakePayload,
         session_id: str
     ) -> str:
-        """Build the initial design generation prompt from intake data."""
-
+        """Build the initial design prompt with room-specific furniture guide."""
+        from services.prompts import ROOM_FURNITURE_GUIDES
+        
         must_have = (
             ", ".join(intake.must_have_items)
             if intake.must_have_items
             else "None specified"
         )
+        
+        room_type = intake.room_type.value
 
+        # Get the room-specific furniture guide
+        furniture_guide = ROOM_FURNITURE_GUIDES.get(
+            room_type,
+            ROOM_FURNITURE_GUIDES["Living Room"]
+        )
+
+        # Build room-specific furniture items for the JSON template
+        furniture_templates = {
+            "Living Room": """{{
+      "id": "item_1",
+      "name": "3-Seater Sofa",
+      "category": "Seating",
+      "recommended_dimensions": "210cm W x 85cm D x 80cm H",
+      "placement": "Against the main wall, centered",
+      "placement_reasoning": "Anchors the seating area and creates focal point",
+      "priority": "essential",
+      "estimated_cost_range": "15000-40000"
+    }},
+    {{
+      "id": "item_2",
+      "name": "Coffee Table",
+      "category": "Tables",
+      "recommended_dimensions": "110cm W x 55cm D x 45cm H",
+      "placement": "Center of seating area, 45cm from sofa",
+      "placement_reasoning": "Within easy reach from sofa, maintains traffic flow",
+      "priority": "essential",
+      "estimated_cost_range": "5000-15000"
+    }},
+    {{
+      "id": "item_3",
+      "name": "TV Unit",
+      "category": "Storage",
+      "recommended_dimensions": "150cm W x 40cm D x 50cm H",
+      "placement": "Wall opposite to sofa",
+      "placement_reasoning": "Optimal viewing distance and creates room focal point",
+      "priority": "essential",
+      "estimated_cost_range": "8000-20000"
+    }}""",
+
+        "Bedroom": """{{
+      "id": "item_1",
+      "name": "Queen Size Bed with Headboard",
+      "category": "Beds",
+      "recommended_dimensions": "160cm W x 200cm L x 120cm H",
+      "placement": "Against the main wall, centered",
+      "placement_reasoning": "Anchors the bedroom and allows access from both sides",
+      "priority": "essential",
+      "estimated_cost_range": "20000-50000"
+    }},
+    {{
+      "id": "item_2",
+      "name": "3-Door Wardrobe",
+      "category": "Storage",
+      "recommended_dimensions": "180cm W x 60cm D x 210cm H",
+      "placement": "Along the side wall",
+      "placement_reasoning": "Maximizes storage without blocking natural light",
+      "priority": "essential",
+      "estimated_cost_range": "20000-55000"
+    }},
+    {{
+      "id": "item_3",
+      "name": "Bedside Tables",
+      "category": "Tables",
+      "recommended_dimensions": "50cm W x 40cm D x 55cm H each",
+      "placement": "Both sides of the bed",
+      "placement_reasoning": "Provides convenient surface for lamps and essentials",
+      "priority": "essential",
+      "estimated_cost_range": "4000-12000"
+    }}""",
+
+        "Home Office": """{{
+      "id": "item_1",
+      "name": "Large Study Desk",
+      "category": "Work",
+      "recommended_dimensions": "140cm W x 70cm D x 75cm H",
+      "placement": "Facing the wall or window, away from distractions",
+      "placement_reasoning": "Provides ample workspace and reduces eye strain from natural light",
+      "priority": "essential",
+      "estimated_cost_range": "8000-25000"
+    }},
+    {{
+      "id": "item_2",
+      "name": "Ergonomic Office Chair",
+      "category": "Seating",
+      "recommended_dimensions": "65cm W x 65cm D x 110cm H",
+      "placement": "In front of the study desk",
+      "placement_reasoning": "Supports long work sessions with proper lumbar support",
+      "priority": "essential",
+      "estimated_cost_range": "8000-25000"
+    }},
+    {{
+      "id": "item_3",
+      "name": "Bookshelf with File Storage",
+      "category": "Storage",
+      "recommended_dimensions": "90cm W x 35cm D x 180cm H",
+      "placement": "Side wall within reach of desk",
+      "placement_reasoning": "Easy access to reference materials and keeps desk clear",
+      "priority": "essential",
+      "estimated_cost_range": "5000-18000"
+    }}""",
+
+        "Dining Room": """{{
+      "id": "item_1",
+      "name": "6-Seater Dining Table",
+      "category": "Dining",
+      "recommended_dimensions": "180cm W x 90cm D x 76cm H",
+      "placement": "Center of the dining room",
+      "placement_reasoning": "Creates central focal point with clearance on all sides",
+      "priority": "essential",
+      "estimated_cost_range": "15000-45000"
+    }},
+    {{
+      "id": "item_2",
+      "name": "Dining Chairs Set of 6",
+      "category": "Seating",
+      "recommended_dimensions": "45cm W x 50cm D x 90cm H each",
+      "placement": "Around the dining table",
+      "placement_reasoning": "Comfortable seating for family meals",
+      "priority": "essential",
+      "estimated_cost_range": "12000-30000"
+    }},
+    {{
+      "id": "item_3",
+      "name": "Sideboard / Buffet",
+      "category": "Storage",
+      "recommended_dimensions": "150cm W x 45cm D x 85cm H",
+      "placement": "Against the main wall",
+      "placement_reasoning": "Storage for crockery and serving items",
+      "priority": "essential",
+      "estimated_cost_range": "10000-30000"
+    }}""",
+
+        "Studio Apartment": """{{
+      "id": "item_1",
+      "name": "Sofa Bed",
+      "category": "Seating",
+      "recommended_dimensions": "200cm W x 90cm D x 85cm H",
+      "placement": "Against the main wall",
+      "placement_reasoning": "Serves as both seating and sleeping — maximizes space",
+      "priority": "essential",
+      "estimated_cost_range": "20000-50000"
+    }},
+    {{
+      "id": "item_2",
+      "name": "Foldable Dining Table",
+      "category": "Tables",
+      "recommended_dimensions": "80cm W x 80cm D x 75cm H",
+      "placement": "Near kitchen area, folds against wall when not in use",
+      "placement_reasoning": "Saves floor space when not dining",
+      "priority": "essential",
+      "estimated_cost_range": "5000-15000"
+    }},
+    {{
+      "id": "item_3",
+      "name": "Wardrobe with Study Nook",
+      "category": "Storage",
+      "recommended_dimensions": "180cm W x 60cm D x 210cm H",
+      "placement": "Along the side wall",
+      "placement_reasoning": "Integrates storage and workspace in one unit",
+      "priority": "essential",
+      "estimated_cost_range": "25000-60000"
+    }}""",
+       }
+
+        furniture_placeholder = furniture_templates.get(
+            room_type,
+            furniture_templates["Living Room"]
+        )
         return INITIAL_DESIGN_PROMPT.format(
-            room_type=intake.room_type.value,
-            dimensions_summary=intake.get_dimensions_summary(),
-            area=intake.get_area(),
-            unit="ft" if intake.unit.value == "feet" else "m",
-            light_level=intake.light_level.value,
-            style_preference=intake.style_preference.value,
-            color_mood=intake.color_mood.value,
-            budget_range=intake.budget_range.value,
-            must_have_items=must_have,
-            items_to_avoid=intake.items_to_avoid or "None",
-            special_constraints=intake.special_constraints or "None",
-            session_id=session_id
+        room_type=room_type,
+        dimensions_summary=intake.get_dimensions_summary(),
+        area=intake.get_area(),
+        unit="ft" if intake.unit.value == "feet" else "m",
+        light_level=intake.light_level.value,
+        style_preference=intake.style_preference.value,
+        color_mood=intake.color_mood.value,
+        budget_range=intake.budget_range.value,
+        must_have_items=must_have,
+        items_to_avoid=intake.items_to_avoid or "None",
+        special_constraints=intake.special_constraints or "None",
+        session_id=session_id,
+        room_furniture_guide=furniture_guide,
+        furniture_items_placeholder=furniture_placeholder
         )
 
     def _create_fallback_plan(

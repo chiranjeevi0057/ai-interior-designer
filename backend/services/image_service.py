@@ -67,10 +67,10 @@ class ImageGenerationService:
             image_url = (
                 f"https://image.pollinations.ai/prompt/{encoded_prompt}"
                 f"?width=1280&height=960"
-                f"&model=flux"
+                f"&model=flux-realism"
                 f"&nologo=true"
                 f"&enhance=true"
-                f"&seed={hash(prompt) % 99999}"
+                f"&seed={abs(hash(prompt)) % 99999}"
             )
 
             # Verify the URL is reachable
