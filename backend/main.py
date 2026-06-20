@@ -93,20 +93,20 @@ async def health_check():
 
 @app.on_event("startup")
 async def startup_event():
-    """Runs once when the server starts."""
-    print("=" * 50)
+    print("\n" + "="*50)
     print("  AI Interior Designer Backend Starting")
-    print("=" * 50)
+    print("="*50)
     print(f"  Environment : {settings.environment}")
     print(f"  LLM Provider: {settings.llm_provider}")
-    print(f"  Database    : {settings.database_url[:30]}...")
-    print(f"  Docs        : http://localhost:{settings.backend_port}/docs")
-    print("=" * 50)
+    print(f"  Groq Model  : {settings.groq_model}")
+    db_display = settings.database_url[:30] + "..." if settings.database_url else "Not configured (using in-memory)"
+    print(f"  Database    : {db_display}")
+    print(f"  Docs        : http://localhost:8000/docs")
+    print("="*50 + "\n")
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """Runs once when the server shuts down."""
     print("AI Interior Designer Backend shutting down...")
 
 
