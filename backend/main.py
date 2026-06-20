@@ -6,7 +6,7 @@
 # 3. Registers all routers (design, status)
 # 4. Adds health check endpoints
 # 5. Starts the server
-
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -34,16 +34,27 @@ app = FastAPI(
 # CORS = Cross-Origin Resource Sharing
 # This tells the backend which URLs are allowed to send requests.
 # Without this, the browser blocks frontend → backend communication.
+allowed_origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
+# Add production frontend URL if set
+frontend_url = os.getenv("FRONTEND_URL", "")
+if frontend_url:
+    allowed_origins.append(frontend_url)
+
+# Allow all Vercel preview URLs
+vercel_url = os.getenv("VERCEL_URL", "")
+if vercel_url:
+    allowed_origins.append(f"https://{vercel_url}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        settings.frontend_url,      # http://localhost:3000 in development
-        "http://localhost:3000",    # Always allow local development
-        "https://*.vercel.app",     # Allow Vercel preview deployments
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],    # Allow GET, POST, PUT, DELETE, etc.
-    allow_headers=["*"],    # Allow all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # ── Register Routers ──────────────────────────────────────────

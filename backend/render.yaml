@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: ai-interior-designer-backend
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: LLM_PROVIDER
+        value: groq
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
+      - key: OLLAMA_MODEL
+        value: llama3.2:1b
+      - key: ENVIRONMENT
+        value: production
+      - key: SESSION_EXPIRY_MINUTES
+        value: 60
