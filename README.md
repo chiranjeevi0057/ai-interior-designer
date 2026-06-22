@@ -3,9 +3,6 @@
 > A full-stack Generative AI application that transforms room specifications into professional interior design plans with concept renders.
 
 **Live Demo → [ai-interior-designer-blush.vercel.app](https://ai-interior-designer-blush.vercel.app)**
-
-![AI Interior Designer](https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1200&q=80&fit=crop)
-
 ---
 
 ## Features
@@ -13,7 +10,7 @@
 - **AI Design Planning** — Llama 3.3 70B reasons about your room dimensions, budget, and style to generate a complete interior design plan
 - **Concept Renders** — Pollinations AI Flux Realism model generates photorealistic room renders from the design plan
 - **Furniture Recommendations** — Budget-aware suggestions with real Indian market pricing from Pepperfry, Urban Ladder, Wooden Street, and IKEA
-- **Multi-turn Refinement** — Chat with the AI to refine your design — "make it more minimalist", "change the color palette"
+- **Multi-turn Refinement** — Chat with the AI to refine your design —  "change the color palette"
 - **Room-specific Design** — Accurate furniture suggestions for Living Room, Bedroom, Home Office, Dining Room, and Studio Apartment
 - **Zero Cost Deployment** — Fully deployed on Vercel + Render using free tiers
 
@@ -22,10 +19,10 @@
 ## Screenshots
 
 ### Landing Page
-![Landing Page](https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1200&q=80)
+![Landing Page](docs/screenshots/landing_page_AIG.png)
 
 ### Design Results
-![Results Page](https://images.unsplash.com/photo-1616594039964-ae9021a400a0?w=1200&q=80)
+![Results Page](docs/screenshots/result_page_AIG.png)
 
 ---
 
